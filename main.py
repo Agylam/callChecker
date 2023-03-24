@@ -1,37 +1,72 @@
-"""
-Auto calls
-"""
+import asyncio
 import datetime
-import time
-import requests
 import os
 
+import aiohttp
 from dotenv import load_dotenv, find_dotenv
-import playsound
+from playsound import playsound
 
 load_dotenv(find_dotenv())
 
-mp3_files = ["1.mp3", "2.mp3"]
-auto_timer = ""
-while True:
-    timeNow = datetime.datetime.now().strftime("%H:%M")
+schedule = []
+MP3_FILES = ["1.mp3", "2.mp3"]
+AUTO_TIMER = ""
 
-    if auto_timer != timeNow:
+
+class Api:
+    def __init__(self):
+        self.url = os.environ.get("API_URL")
+
+    async def get_schedule(self):
+        async with aiohttp.ClientSession() as session:
+            dof = await get_dof()
+            async with session.get(self.url + "schedule/" + dof) as response:
+                return await response.json()
+
+
+async def get_dof():
+    return str(datetime.datetime.today().weekday())
+
+
+async def play_sound(file_path):
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(None, playsound, file_path)
+
+
+class Listeners:
+    def __init__(self):
+        self.schedule = []
+        self.api_obj = Api()
+        asyncio.run(self.start())
+
+    async def start(self):
+        await asyncio.gather(self.start_schedule_listener(), self.start_calls_listener())
+
+    async def start_schedule_listener(self):
+        while True:
+            self.schedule = await self.api_obj.get_schedule()
+            await asyncio.sleep(20)
+
+    async def start_calls_listener(self):
         auto_timer = ""
-    if auto_timer == "":
-        response = requests.get(os.environ.get("API_URL") + "schedule/" + str(datetime.datetime.today().weekday()))
-        if not response:
-            print("API Error!!!")
-        response = response.json()
-        startLesson = [a for a in response if a['start'] == timeNow]
-        endLesson = [a for a in response if a['end'] == timeNow]
-        print(timeNow)
-        if len(startLesson) != 0:
-            auto_timer = timeNow
-            print("Звенит звонок на урок")
-            playsound.playsound(mp3_files[0], True)
-        elif len(endLesson) != 0:
-            auto_timer = timeNow
-            print("Звенит звонок с урока")
-            playsound.playsound(mp3_files[1], True)
-    time.sleep(1)
+        while True:
+            time_now = datetime.datetime.now().strftime("%H:%M")
+            print(time_now)
+            print(self.schedule)
+            if auto_timer != time_now:
+                auto_timer = ""
+            if auto_timer == "":
+                start_lesson = [a for a in self.schedule if a['start'] == time_now]
+                end_lesson = [a for a in self.schedule if a['end'] == time_now]
+                if len(start_lesson) != 0:
+                    auto_timer = time_now
+                    print("Звенит звонок на урок")
+                    await play_sound(MP3_FILES[0])
+                elif len(end_lesson) != 0:
+                    auto_timer = time_now
+                    print("Звенит звонок с урока")
+                    await play_sound(MP3_FILES[1])
+            await asyncio.sleep(1)
+
+
+listener = Listeners()
