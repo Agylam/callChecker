@@ -20,9 +20,8 @@ class Api:
     async def get_schedule(self):
         async with aiohttp.ClientSession() as session:
             dof = await get_dof()
-            print(1)
             async with session.get(self.url + "schedule/" + dof) as response:
-                print("d")
+                print("return Request")
                 return await response.json()
 
 
@@ -46,15 +45,18 @@ class Listeners:
 
     async def schedule_listener(self):
         while True:
-            print("a")
+            print("Before API Request")
             data = await self.api_obj.get_schedule()
-            print("b")
+            print("After API Request:", data)
             self.lessons = sorted(data, key=lambda lesson: lesson["start"])
             await asyncio.sleep(1)
 
-    async def get_nearest_lesson(self, time_now):
+    async def get_nearest_lesson(self):
         while self.lessons == []:
+            print("Waiting for lessons")
             await asyncio.sleep(1)
+        time_now = datetime.datetime.now().strftime("%H:%M")
+        print("NaerLes NowTime:", time_now)
         for lesson in self.lessons:
             if lesson["end"] > time_now:
                 return lesson
@@ -62,18 +64,20 @@ class Listeners:
     # Функция для получения ближайшего звонка
     async def get_call(self):
         time_now = datetime.datetime.now().strftime("%H:%M")
-        nearest_call = await self.get_nearest_lesson(time_now)
+        nearest_call = await self.get_nearest_lesson()
+        print("NC:", nearest_call)
         while time_now not in [nearest_call["end"], nearest_call["start"]]:
-            print("i")
+            time_now = datetime.datetime.now().strftime("%H:%M")
+            print("Waiting nearest call... Time_Now:", time_now)
             await asyncio.sleep(1)
         return nearest_call
 
     async def calls_listener(self):
         # Запуск функцции получения звонка
         while True:
-            print("y")
+            print("Before get_call")
             call = await self.get_call()
-            print("u")
+            print("After get_call")
             print("Звонок", call)
             await asyncio.sleep(1)
             # Действия, которые нужно выполнить при получении звонка
