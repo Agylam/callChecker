@@ -1,7 +1,6 @@
 import asyncio
 import datetime
 import os
-import time
 
 import aiohttp
 from dotenv import load_dotenv, find_dotenv
@@ -55,7 +54,7 @@ class Listeners:
 
     async def get_nearest_lesson(self, time_now):
         while self.lessons == []:
-            time.sleep(1)
+            await asyncio.sleep(1)
         for lesson in self.lessons:
             if lesson["end"] > time_now:
                 return lesson
