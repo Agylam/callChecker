@@ -1,5 +1,4 @@
 import asyncio
-import concurrent.futures
 import datetime
 import os
 import time
@@ -22,7 +21,9 @@ class Api:
     async def get_schedule(self):
         async with aiohttp.ClientSession() as session:
             dof = await get_dof()
+            print(1)
             async with session.get(self.url + "schedule/" + dof) as response:
+                print("d")
                 return await response.json()
 
 
@@ -46,38 +47,32 @@ class Listeners:
 
     async def schedule_listener(self):
         while True:
-            self.lessons = await self.api_obj.get_schedule()
+            data = await self.api_obj.get_schedule()
+            self.lessons = sorted(data, key=lambda lesson: lesson["start"])
             await asyncio.sleep(1)
 
-    def get_nearest_lesson(self, time_now):
+    async def get_nearest_lesson(self, time_now):
         while self.lessons == []:
             time.sleep(1)
-        # print(self.lessons)
         for lesson in self.lessons:
             if lesson["end"] > time_now:
                 return lesson
 
-    def get_call(self):
-        time_now = self.get_time()
-        nearest_call = self.get_nearest_lesson(time_now)
+    # Функция для получения ближайшего звонка
+    async def get_call(self):
+        time_now = datetime.datetime.now().strftime("%H:%M")
+        nearest_call = await self.get_nearest_lesson(time_now)
         while time_now not in [nearest_call["end"], nearest_call["start"]]:
-            print(nearest_call, time_now)
-            time.sleep(1)
+            asyncio.sleep(1)
         return nearest_call
 
     async def calls_listener(self):
+        # Запуск функцции получения звонка
         while True:
-            time_now = self.get_time()
-            loop = asyncio.get_running_loop()
-            with concurrent.futures.ThreadPoolExecutor() as pool:
-                call = await loop.run_in_executor(pool, self.get_call)
+            call = await self.get_call()
+            print("Звонок", call)
             # Действия, которые нужно выполнить при получении звонка
-            print("Звонок!", call)
-            await do_call(time_now in call["start"])
-            await asyncio.sleep(1)
 
-    def get_time(self):
-        return datetime.datetime.now().strftime("%H:%M")
     #
     # async def start_calls_listener(self):
     #     auto_timer = ""
