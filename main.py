@@ -47,7 +47,9 @@ class Listeners:
 
     async def schedule_listener(self):
         while True:
+            print("a")
             data = await self.api_obj.get_schedule()
+            print("b")
             self.lessons = sorted(data, key=lambda lesson: lesson["start"])
             await asyncio.sleep(1)
 
@@ -63,14 +65,18 @@ class Listeners:
         time_now = datetime.datetime.now().strftime("%H:%M")
         nearest_call = await self.get_nearest_lesson(time_now)
         while time_now not in [nearest_call["end"], nearest_call["start"]]:
-            asyncio.sleep(1)
+            print("i")
+            await asyncio.sleep(1)
         return nearest_call
 
     async def calls_listener(self):
         # Запуск функцции получения звонка
         while True:
+            print("y")
             call = await self.get_call()
+            print("u")
             print("Звонок", call)
+            await asyncio.sleep(1)
             # Действия, которые нужно выполнить при получении звонка
 
     #
