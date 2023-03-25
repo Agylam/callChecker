@@ -60,7 +60,7 @@ class Listeners:
         time_now = datetime.datetime.now().strftime("%H:%M")
         nearest_call = await self.get_nearest_lesson()
 
-        if nearest_call == []:
+        if nearest_call == None:
             return []
 
         while time_now not in [nearest_call["end"], nearest_call["start"]]:
