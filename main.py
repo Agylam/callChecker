@@ -58,7 +58,7 @@ class Listeners:
         time_now = datetime.datetime.now().strftime("%H:%M")
         print("NaerLes NowTime:", time_now)
         for lesson in self.lessons:
-            if lesson["end"] > time_now:
+            if lesson["end"] >= time_now:
                 return lesson
 
     # Функция для получения ближайшего звонка
@@ -75,10 +75,21 @@ class Listeners:
     async def calls_listener(self):
         # Запуск функцции получения звонка
         while True:
+            time_now = datetime.datetime.now().strftime("%H:%M")
             print("Before get_call")
             call = await self.get_call()
             print("After get_call")
+            if time_now in call["start"]:
+                call_type = 0
+            else:
+                call_type = 1
+            call_exec = time_now
+            await do_call(call_type)
             print("Звонок", call)
+
+            while call_exec == time_now:
+                time_now = datetime.datetime.now().strftime("%H:%M")
+                await asyncio.sleep(1)
             await asyncio.sleep(1)
             # Действия, которые нужно выполнить при получении звонка
 
