@@ -8,7 +8,6 @@ from playsound import playsound
 
 load_dotenv(find_dotenv())
 
-schedule = []
 MP3_FILES = ["1.mp3", "2.mp3"]
 AUTO_TIMER = ""
 API_URL = os.environ.get("API_URL")
@@ -25,18 +24,18 @@ class Api:
                 return await response.json()
 
 
-async def do_call(type):
-    loop = asyncio.get_running_loop()
-    await loop.run_in_executor(None, playsound, MP3_FILES[type])
-
-
 class Listeners:
     def __init__(self):
         self.lessons = []
         self.api_obj = Api()
+        self.time = ""
         asyncio.run(self.start())
 
+    async def update_time(self):
+        self.time = datetime.datetime.now().strftime("%H:%M")
+
     async def start(self):
+        await self.update_time()
         await asyncio.gather(self.schedule_listener(), self.calls_listener())
 
     async def schedule_listener(self):
@@ -46,51 +45,55 @@ class Listeners:
             await asyncio.sleep(1)
 
     async def get_nearest_lesson(self):
-        while self.lessons == []:
+        while not self.lessons:
             await asyncio.sleep(1)
 
-        time_now = datetime.datetime.now().strftime("%H:%M")
+        await self.update_time()
 
         for lesson in self.lessons:
-            if lesson["end"] >= time_now:
+            if lesson["end"] >= self.time:
                 return lesson
 
-    # Функция для получения ближайшего звонка
     async def get_call(self):
-        time_now = datetime.datetime.now().strftime("%H:%M")
+        await self.update_time()
         nearest_call = await self.get_nearest_lesson()
 
         if nearest_call == None:
             return []
 
-        while time_now not in [nearest_call["end"], nearest_call["start"]]:
-            time_now = datetime.datetime.now().strftime("%H:%M")
-
+        while self.time not in [nearest_call["end"], nearest_call["start"]]:
+            await self.update_time()
             await asyncio.sleep(1)
 
         return nearest_call
 
     async def calls_listener(self):
         while True:
-            time_now = datetime.datetime.now().strftime("%H:%M")
+            await self.update_time()
+
             call = await self.get_call()
+
             if call == []:
                 continue
-            if time_now in call["start"]:
+
+            call_type = 1
+            if self.time in call["start"]:
                 call_type = 0
-            else:
-                call_type = 1
 
-            call_exec = time_now
+            call_exec = self.time
 
-            print("Звонок", call, call_type)
-            await do_call(call_type)
+            await self.do_call(call_type)
 
-            while call_exec == time_now:
-                time_now = datetime.datetime.now().strftime("%H:%M")
+            while call_exec == self.time:
+                await self.update_time()
                 await asyncio.sleep(1)
 
             await asyncio.sleep(1)
+
+    async def do_call(self, type):
+        print("Звонок", type)
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, playsound, MP3_FILES[type])
 
 
 listener = Listeners()
